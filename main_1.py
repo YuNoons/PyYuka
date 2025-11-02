@@ -5,3 +5,12 @@ if a == 'да':
     print('Молодец, верно!')
 else:
     print('Не верно')
+a = int(input())
+b = int(input())
+print(a + b)
+print(a - b)
+print(a * b)
+print(a / b)
+print(a % b)
+print(a ** b)
+print(a // b)
