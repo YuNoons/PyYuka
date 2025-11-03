@@ -1,18 +1,21 @@
 import json
 import os
+from config import *
+from shop import Shop
 
-SAVE_FILE = "construction_simulator/game_save.json"
+SAVE_FILE = os.path.dirname(os.path.abspath(__file__)) + "/game_save.json"
 
 def save_game(game_state):
     data = {
         'balance': game_state.balance,
         'day': game_state.day,
+        'upgrade_level': game_state.upgrade_system.level,
         'shops': []
     }
     
     for shop in game_state.shops:
         shop_data = {
-            'name': shop.name,
+            'shop_type_id': shop.shop_type.id,
             'upgrade_level': shop.upgrade_level,
             'income_multiplier': shop.income_multiplier,
             'is_operational': shop.is_operational,

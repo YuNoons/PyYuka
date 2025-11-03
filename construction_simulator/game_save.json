@@ -1,9 +1,122 @@
 {
-  "balance": 9.378146409988403,
-  "day": 11,
+  "balance": 51144759074.99024,
+  "day": 35,
+  "upgrade_level": 118,
   "shops": [
     {
-      "name": "\u0421\u0442\u0440\u043e\u0439\u043c\u0430\u0440\u043a\u0435\u0442 #1",
+      "shop_type_id": 1,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 1,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 1,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 1,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 1,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 2,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 3,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 3,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 3,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 3,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 2,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    },
+    {
+      "shop_type_id": 4,
       "upgrade_level": 0,
       "income_multiplier": 1.0,
       "is_operational": true,

@@ -18,16 +18,23 @@ BLUE = (100, 100, 200)
 LIGHT_BLUE = (150, 150, 255)
 DARK_BLUE = (50, 50, 150)
 YELLOW = (255, 255, 0)
+RED = (255, 100, 100)
 
 # Игровые константы
 STARTING_BALANCE = 10.0
-SHOP_BASE_COST = 10.0
-SHOP_BASE_INCOME = 0.5  # Увеличили с 0.1 до 0.5
-UPGRADE_INCOME_MULTIPLIER = 1.1  # Уменьшили с 1.2 до 1.1 (+10%)
-UPGRADE_COST_MULTIPLIER = 1.15
-MAX_UPGRADES = 20
-DAY_DURATION = 5  # секунд
-CONSTRUCTION_TIME = 1  # дней
+DAY_DURATION = 5  # секунд реального времени = 1 игровой день
+
+# Баланс магазинов
+SHOP_TYPES_CONFIG = {
+    1: {"name": "Строймаркет", "cost": 10, "income": 0.8, "construction_days": 1, "requirement": None},
+    2: {"name": "ПрофиСтрой", "cost": 45, "income": 4.0, "construction_days": 2, "requirement": {1: 2}},
+    3: {"name": "МегаСтрой", "cost": 150, "income": 18.0, "construction_days": 3, "requirement": {2: 1}},
+    4: {"name": "СтройИмперия", "cost": 800, "income": 100.0, "construction_days": 5, "requirement": {3: 3}}
+}
+
+# Баланс улучшений
+UPGRADE_BASE_COST = 15
+UPGRADE_COST_MULTIPLIER = 1.12  # +12% за уровень
 
 # Шрифты
 def init_fonts():
