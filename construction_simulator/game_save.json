@@ -1,0 +1,13 @@
+{
+  "balance": 9.378146409988403,
+  "day": 11,
+  "shops": [
+    {
+      "name": "\u0421\u0442\u0440\u043e\u0439\u043c\u0430\u0440\u043a\u0435\u0442 #1",
+      "upgrade_level": 0,
+      "income_multiplier": 1.0,
+      "is_operational": true,
+      "days_until_operational": 0
+    }
+  ]
+}
