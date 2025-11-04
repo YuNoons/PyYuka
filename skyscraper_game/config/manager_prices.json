@@ -1,0 +1,48 @@
+{
+  "managers": {
+    "trainee": {
+      "name": "Стажёр",
+      "cost": 8000,
+      "income_bonus": 0.05,
+      "auto_collect": true,
+      "unlock_at_floor": 1
+    },
+    "experienced": {
+      "name": "Опытный", 
+      "cost": 15000,
+      "income_bonus": 0.10,
+      "auto_collect": true,
+      "unlock_at_floor": 3
+    },
+    "professional": {
+      "name": "Профи",
+      "cost": 25000,
+      "income_bonus": 0.15,
+      "auto_collect": true,
+      "unlock_at_floor": 6
+    },
+    "repair_specialist": {
+      "name": "Ремонтник",
+      "cost": 30000,
+      "income_bonus": 0.0,
+      "repair_cost_reduction": 0.2,
+      "auto_collect": true,
+      "unlock_at_floor": 8
+    },
+    "marketer": {
+      "name": "Маркетолог",
+      "cost": 40000, 
+      "income_bonus": 0.25,
+      "auto_collect": true,
+      "unlock_at_floor": 12
+    },
+    "economist": {
+      "name": "Экономист",
+      "cost": 35000,
+      "income_bonus": 0.0,
+      "maintenance_reduction": 0.3,
+      "auto_collect": true,
+      "unlock_at_floor": 15
+    }
+  }
+}

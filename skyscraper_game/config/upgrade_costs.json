@@ -1,0 +1,31 @@
+{
+  "global_upgrades": {
+    "elevator_system": {
+      "name": "Система лифтов",
+      "description": "Увеличивает доход верхних этажей",
+      "levels": [
+        {"cost": 20000, "income_bonus": 0.1},
+        {"cost": 50000, "income_bonus": 0.2},
+        {"cost": 100000, "income_bonus": 0.3}
+      ]
+    },
+    "facade_renovation": {
+      "name": "Ремонт фасада", 
+      "description": "Увеличивает привлекательность всего здания",
+      "levels": [
+        {"cost": 15000, "attraction_bonus": 0.15},
+        {"cost": 40000, "attraction_bonus": 0.25},
+        {"cost": 80000, "attraction_bonus": 0.4}
+      ]
+    },
+    "infrastructure": {
+      "name": "Инфраструктура",
+      "description": "Снижает операционные расходы",
+      "levels": [
+        {"cost": 10000, "maintenance_reduction": 0.1},
+        {"cost": 30000, "maintenance_reduction": 0.2},
+        {"cost": 70000, "maintenance_reduction": 0.35}
+      ]
+    }
+  }
+}
