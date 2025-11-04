@@ -230,6 +230,9 @@ class GameWindow:
         
     def show_message(self, text, color=None, duration=180, effect=None):
         """Показать красивое сообщение"""
+        if not text:
+            text = "Произошла ошибка"  # Защита от пустых сообщений
+            
         message_data = {
             'text': text,
             'color': color or self.colors['text'],
@@ -281,100 +284,114 @@ class GameWindow:
         """Обработка кликов мыши с учетом скролла"""
         x, y = pos
         
-        # Клик по полосе прокрутки
-        if self.is_scrollbar_click(x, y) or self.upgrades_panel.handle_click(pos):
-            return
+        # Сначала проверяем клик по панели улучшений
+        if self.upgrades_panel.handle_click(pos):
+            return True
+            
+        # Проверяем клик по полосе прокрутки
+        if self.is_scrollbar_click(x, y):
+            return True
         
         # Проверяем клик по кнопке сохранения в верхней панели
-        save_button = pygame.Rect(self.config.SCREEN_WIDTH - 120, 20, 100, 30)
+        save_button = pygame.Rect(self.config.SCREEN_WIDTH - 130, 25, 110, 40)
         if save_button.collidepoint(x, y):
             success = self.game.save_system.save_game(self.game, "manual_save.json")
             if success:
                 self.show_message("💾 Игра сохранена!", self.colors['success'])
             else:
                 self.show_message("❌ Ошибка сохранения!", self.colors['error'])
-            return
+            return True
             
         # Клик по этажу в здании
         if x < self.building_width:
-            start_y = 90
+            start_y = 150
             floor_height = 30
             
             if y >= start_y:
                 start_index = self.scroll_offset // self.floor_height
-                floor_index = start_index + (y - start_y) // floor_height
+                relative_y = y - start_y
+                floor_index = start_index + (relative_y // floor_height)
                 
                 if 0 <= floor_index < len(self.game.building.floors):
                     self.game.selected_floor = floor_index + 1
-                    print(f"🔍 DEBUG: Выбран этаж {self.game.selected_floor} (индекс {floor_index})")
+                    return True
         
         # Клик по кнопкам в информационной панели
         elif x > self.building_width and self.game.selected_floor:
-            self.handle_info_panel_click(x, y)
+            return self.handle_info_panel_click(x, y)
+            
+        return True
 
     def handle_info_panel_click(self, x, y):
         """Обработка кликов в информационной панели"""
+        if not self.game.selected_floor or self.game.selected_floor > len(self.game.building.floors):
+            return False
+            
         floor = self.game.building.floors[self.game.selected_floor - 1]
-        panel_x = self.building_width + 10
-
-        print(f"🔍 DEBUG: Клик в панели - x:{x}, y:{y}")
-        print(f"🔍 DEBUG: Выбран этаж {self.game.selected_floor}, деньги: {self.game.money}")
-
-        current_y = 90 + 45  # Начало после заголовка
+        panel_x = self.building_width + 30
+        
+        # Определяем позиции кнопок на основе текущего отображения
+        current_y = 180
 
         if not floor.owned:
-            current_y += 25
-            buy_button = pygame.Rect(panel_x + 20, current_y, 150, 30)
+            # Кнопка покупки этажа
+            buy_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 50)
             
             if buy_button.collidepoint(x, y):
                 cost = self.game.building.get_floor_cost(self.game.selected_floor)
                 if self.game.buy_floor(self.game.selected_floor):
                     self.show_message(f"Этаж {self.game.selected_floor} куплен!", self.colors['success'])
                 else:
-                    self.show_message(f"Недостаточно денег! Нужно: {cost}", self.colors['error'])
-            return
+                    self.show_message(f"Недостаточно денег! Нужно: {cost} руб.", self.colors['error'])
+                return True
+            return False
 
-        # Для купленного этажа
-        current_y += 5 * 25 + 10
+        # Для купленного этажа - кнопки действий
+        current_y = 180
 
         # Кнопка сбора дохода
         if floor.income_collected > 0 and (not floor.manager or not self.config.MANAGER_CONFIG["managers"][floor.manager].get("auto_collect", False)):
-            collect_button = pygame.Rect(panel_x + 20, current_y, 200, 30)
+            collect_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
             
             if collect_button.collidepoint(x, y):
-                collected = self.game.collect_floor_income(self.game.selected_floor)
-                if collected:
-                    self.show_message(f"Собрано {floor.income_collected} руб.!", self.colors['success'])
-            current_y += 40
+                self.game.collect_floor_income(self.game.selected_floor)
+                return True
+            current_y += 50
 
-        # Кнопки улучшения ремонта
+        # Кнопка улучшения ремонта
         repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
-        current_repair_index = repair_levels.index(floor.repair_level)
-
-        if current_repair_index < len(repair_levels) - 1:
-            next_repair = repair_levels[current_repair_index + 1]
-            repair_button = pygame.Rect(panel_x + 20, current_y, 250, 30)
-
-            if repair_button.collidepoint(x, y):
+        if floor.repair_level in repair_levels:
+            current_repair_index = repair_levels.index(floor.repair_level)
+            
+            if current_repair_index < len(repair_levels) - 1:
+                next_repair = repair_levels[current_repair_index + 1]
                 repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
-                if self.game.repair_floor(self.game.selected_floor, next_repair):
-                    self.show_message(f"Ремонт улучшен до {next_repair}!", self.colors['success'])
-                else:
-                    self.show_message(f"Недостаточно денег для ремонта! Нужно: {repair_cost}", self.colors['error'])
-            current_y += 40
+                
+                repair_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
+
+                if repair_button.collidepoint(x, y):
+                    if self.game.repair_floor(self.game.selected_floor, next_repair):
+                        self.show_message(f"Ремонт улучшен до {next_repair}!", self.colors['success'])
+                    else:
+                        self.show_message(f"Недостаточно денег для ремонта! Нужно: {repair_cost} руб.", self.colors['error'])
+                    return True
+                current_y += 50
 
         # Кнопки найма менеджеров
         available_managers = self.game.get_available_managers(self.game.selected_floor)
         for manager_id, manager_data in available_managers:
             if manager_id != floor.manager:
-                manager_button = pygame.Rect(panel_x + 20, current_y, 250, 30)
+                manager_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
                 
                 if manager_button.collidepoint(x, y):
                     if self.game.hire_manager(self.game.selected_floor, manager_id):
                         self.show_message(f"Нанят {manager_data['name']}!", self.colors['success'])
                     else:
-                        self.show_message(f"Недостаточно денег!", self.colors['error'])
-                current_y += 40
+                        self.show_message(f"Недостаточно денег! Нужно: {manager_data['cost']} руб.", self.colors['error'])
+                    return True
+                current_y += 50
+        
+        return False
 
     def is_scrollbar_click(self, x, y):
         """Проверяем, был ли клик по полосе прокрутки"""
@@ -384,12 +401,17 @@ class GameWindow:
         scrollbar_width = 10
         scrollbar_x = self.building_width - scrollbar_width - 5
 
-        if scrollbar_x <= x <= scrollbar_x + scrollbar_width and 80 <= y <= self.config.SCREEN_HEIGHT - 10:
-            scroll_area_height = self.config.SCREEN_HEIGHT - 90
-            click_ratio = (y - 80) / scroll_area_height
+        # Исправлено: область скроллбара соответствует видимой области этажей
+        scroll_area_start = 150
+        scroll_area_end = self.config.SCREEN_HEIGHT - 10
+        scroll_area_height = scroll_area_end - scroll_area_start
 
+        if (scrollbar_x <= x <= scrollbar_x + scrollbar_width and 
+            scroll_area_start <= y <= scroll_area_end):
+            
             total_height = len(self.game.building.floors) * self.floor_height
             max_scroll = max(0, total_height - scroll_area_height)
+            click_ratio = (y - scroll_area_start) / scroll_area_height
             self.scroll_offset = int(click_ratio * max_scroll)
 
             return True
@@ -584,6 +606,9 @@ class GameWindow:
 
     def render_floor_info_details(self):
         """Детальная информация о выбранном этаже"""
+        if self.game.selected_floor > len(self.game.building.floors):
+            return
+            
         floor = self.game.building.floors[self.game.selected_floor - 1]
         panel_x = self.building_width + 30
         current_y = 110
@@ -647,7 +672,8 @@ class GameWindow:
         self.visual_effects.draw_glass_effect(self.screen, cost_rect, (250, 250, 255), 150)
         
         cost_title = self.small_font.render("Стоимость покупки", True, self.colors['text_secondary'])
-        cost_value = self.font.render(f"{cost} руб.", True, self.colors['accent'])
+        cost_value = self.font.render(f"{cost} руб.", True, 
+                                    self.colors['success'] if can_afford else self.colors['error'])
         
         self.screen.blit(cost_title, (cost_rect.centerx - cost_title.get_width()//2, cost_rect.y + 15))
         self.screen.blit(cost_value, (cost_rect.centerx - cost_value.get_width()//2, cost_rect.y + 40))
@@ -673,6 +699,7 @@ class GameWindow:
             button_rect = pygame.Rect(x, current_y, self.info_panel_width - 90, 40)
             hover = button_rect.collidepoint(mouse_pos)
             
+            # Рисуем кнопку и сохраняем её координаты для обработки кликов
             self.visual_effects.draw_modern_button(
                 self.screen, button_rect,
                 f"💰 Собрать {floor.income_collected} руб.",
@@ -682,22 +709,28 @@ class GameWindow:
         
         # Кнопка улучшения ремонта
         repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
-        current_repair_index = repair_levels.index(floor.repair_level)
-        
-        if current_repair_index < len(repair_levels) - 1:
-            next_repair = repair_levels[current_repair_index + 1]
-            repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
-            can_afford = self.game.money >= repair_cost
+        if floor.repair_level in repair_levels:
+            current_repair_index = repair_levels.index(floor.repair_level)
             
-            button_rect = pygame.Rect(x, current_y, self.info_panel_width - 90, 40)
-            hover = button_rect.collidepoint(mouse_pos) and can_afford
-            
-            self.visual_effects.draw_modern_button(
-                self.screen, button_rect,
-                f"🔧 Улучшить до {next_repair} - {repair_cost} руб.",
-                self.small_font, self.colors, hover, not can_afford
-            )
-            current_y += 50
+            if current_repair_index < len(repair_levels) - 1:
+                next_repair = repair_levels[current_repair_index + 1]
+                repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
+                can_afford = self.game.money >= repair_cost
+                
+                button_rect = pygame.Rect(x, current_y, self.info_panel_width - 90, 40)
+                hover = button_rect.collidepoint(mouse_pos) and can_afford
+                
+                self.visual_effects.draw_modern_button(
+                    self.screen, button_rect,
+                    f"🔧 Улучшить до {next_repair}",
+                    self.small_font, self.colors, hover, not can_afford
+                )
+                
+                # Стоимость под кнопкой
+                cost_text = self.small_font.render(f"Стоимость: {repair_cost} руб.", True, 
+                                                 self.colors['text_secondary'] if can_afford else self.colors['error'])
+                self.screen.blit(cost_text, (x + 10, current_y + 45))
+                current_y += 70
         
         # Кнопки менеджеров
         available_managers = self.game.get_available_managers(self.game.selected_floor)
@@ -707,14 +740,26 @@ class GameWindow:
                 button_rect = pygame.Rect(x, current_y, self.info_panel_width - 90, 40)
                 hover = button_rect.collidepoint(mouse_pos) and can_afford
                 
-                bonus_text = self.get_manager_bonus_text(manager_data)
-                button_text = f"👨‍💼 {manager_data['name']} - {manager_data['cost']} руб.{bonus_text}"
-                
+                button_text = f"👨‍💼 Нанять {manager_data['name']}"
                 self.visual_effects.draw_modern_button(
                     self.screen, button_rect, button_text,
                     self.small_font, self.colors, hover, not can_afford
                 )
-                current_y += 50
+                
+                # Стоимость и бонусы под кнопкой
+                cost_text = self.small_font.render(f"Стоимость: {manager_data['cost']} руб.", True, 
+                                                 self.colors['text_secondary'] if can_afford else self.colors['error'])
+                self.screen.blit(cost_text, (x + 10, current_y + 45))
+                
+                bonus_text = self.get_manager_bonus_text(manager_data)
+                if bonus_text:
+                    bonus_surface = self.small_font.render(bonus_text, True, self.colors['text_secondary'])
+                    self.screen.blit(bonus_surface, (x + 10, current_y + 65))
+                    current_y += 90
+                else:
+                    current_y += 70
+        
+        return current_y
 
     def get_manager_bonus_text(self, manager_data):
         """Возвращает текст бонуса менеджера"""
@@ -730,102 +775,6 @@ class GameWindow:
         
         return " (" + ", ".join(bonuses) + ")" if bonuses else ""
     
-    def render_floor_info(self, x, y):
-        """Отрисовка информации о выбранном этаже"""
-        floor = self.game.building.floors[self.game.selected_floor - 1]
-        
-        # Заголовок с подсветкой
-        title_bg = pygame.Rect(x, y, self.info_panel_width - 20, 35)
-        pygame.draw.rect(self.screen, (180, 180, 180), title_bg)
-        title = self.get_text_surface(f"Этаж {self.game.selected_floor}", self.font, (0, 0, 0))
-        self.screen.blit(title, (x + 20, y + 5))
-        
-        y += 45
-        
-        if floor.owned:
-            # Информация о купленном этаже
-            income = floor.calculate_income(self.game.config)
-            maintenance_cost = floor.calculate_maintenance_cost(self.game.config)
-            
-            info_lines = [
-                f"Тип: {floor.floor_type}",
-                f"Доход/день: {income} руб.",
-                f"Накоплено: {floor.income_collected} руб.",
-                f"Расходы/день: {maintenance_cost} руб.",
-                f"Уровень ремонта: {floor.repair_level}",
-                f"Менеджер: {self.config.MANAGER_CONFIG['managers'][floor.manager]['name'] if floor.manager else 'Нет'}"
-            ]
-            
-            for line in info_lines:
-                text = self.get_text_surface(line, self.small_font, self.colors['text'])
-                self.screen.blit(text, (x + 20, y))
-                y += 25
-            
-            y += 10
-                
-            # Кнопка сбора дохода
-            if floor.income_collected > 0 and (not floor.manager or not self.config.MANAGER_CONFIG["managers"][floor.manager].get("auto_collect", False)):
-                button_rect = pygame.Rect(x + 20, y, 200, 30)
-                pygame.draw.rect(self.screen, self.colors['button'], button_rect)
-                text = self.get_text_surface(f"Собрать {floor.income_collected} руб.", self.small_font, self.colors['text'])
-                self.screen.blit(text, (button_rect.x + 10, button_rect.y + 8))
-                y += 40
-    
-            # Кнопки улучшения ремонта
-            repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
-            current_repair_index = repair_levels.index(floor.repair_level)
-
-            if current_repair_index < len(repair_levels) - 1:
-                next_repair = repair_levels[current_repair_index + 1]
-                repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
-                can_afford = self.game.money >= repair_cost
-
-                button_color = self.colors['button'] if can_afford else self.colors['button_disabled']
-                button_rect = pygame.Rect(x + 20, y, 250, 30)
-                pygame.draw.rect(self.screen, button_color, button_rect)
-
-                text = self.get_text_surface(f"Улучшить до {next_repair} ({repair_cost} руб.)", self.small_font, self.colors['text'])
-                self.screen.blit(text, (button_rect.x + 10, button_rect.y + 8))
-                y += 40
-    
-            # Кнопки найма менеджеров
-            available_managers = self.game.get_available_managers(self.game.selected_floor)
-            for manager_id, manager_data in available_managers:
-                if manager_id != floor.manager:
-                    can_afford = self.game.money >= manager_data["cost"]
-                    button_color = self.colors['button'] if can_afford else self.colors['button_disabled']
-                    
-                    button_rect = pygame.Rect(x + 20, y, 250, 30)
-                    pygame.draw.rect(self.screen, button_color, button_rect)
-                    
-                    bonus_text = ""
-                    if manager_data.get("income_bonus", 0) > 0:
-                        bonus_text = f" +{manager_data['income_bonus']*100}%"
-                    elif manager_data.get("repair_cost_reduction", 0) > 0:
-                        bonus_text = f" -{manager_data['repair_cost_reduction']*100}% ремонт"
-                    elif manager_data.get("maintenance_reduction", 0) > 0:
-                        bonus_text = f" -{manager_data['maintenance_reduction']*100}% расходы"
-                    
-                    text = self.get_text_surface(f"{manager_data['name']} ({manager_data['cost']} руб.){bonus_text}", self.small_font, self.colors['text'])
-                    self.screen.blit(text, (button_rect.x + 10, button_rect.y + 8))
-                    y += 40
-    
-        else:
-            # Информация о непокупном этаже
-            cost = self.game.building.get_floor_cost(self.game.selected_floor)
-            can_afford = self.game.money >= cost
-            
-            text = self.get_text_surface(f"Стоимость: {cost} руб.", self.small_font, self.colors['text'])
-            self.screen.blit(text, (x + 20, y))
-            y += 25
-            
-            # Кнопка покупки
-            button_color = self.colors['button'] if can_afford else self.colors['button_disabled']
-            button_rect = pygame.Rect(x + 20, y, 150, 30)
-            pygame.draw.rect(self.screen, button_color, button_rect)
-            text = self.get_text_surface("Купить этаж", self.small_font, self.colors['text'])
-            self.screen.blit(text, (button_rect.x + 10, button_rect.y + 8))
-
     def render_top_panel(self):
         """Отрисовка верхней панели с общей информацией"""
         # Основная панель с тенью и градиентом
@@ -882,7 +831,7 @@ class GameWindow:
             alpha // 2
         )
         
-        # Текст сообщения
+        # Текст сообщения (ИСПРАВЛЕНО: добавлен blit)
         message_surf = self.font.render(
             self.current_message['text'], 
             True, 
@@ -891,14 +840,4 @@ class GameWindow:
         message_surf.set_alpha(alpha)
         
         message_rect = message_surf.get_rect(center=(self.config.SCREEN_WIDTH // 2, 110 + y_offset))
-
-    def render_debug_info(self):
-        """Отрисовка отладочной информации"""
-        fps = f"FPS: {int(self.clock.get_fps())}"
-        debug_text = self.small_font.render(fps, True, (255, 0, 0))
-        self.screen.blit(debug_text, (self.config.SCREEN_WIDTH - 80, 10))
-        
-        # Информация о памяти (примерная)
-        memory_info = f"Сообщ.: {len(self.message_queue)}"
-        memory_text = self.small_font.render(memory_info, True, (255, 0, 0))
-        self.screen.blit(memory_text, (self.config.SCREEN_WIDTH - 150, 30))
+        self.screen.blit(message_surf, message_rect)  # ИСПРАВЛЕНО: добавлена эта строка

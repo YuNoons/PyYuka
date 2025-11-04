@@ -1,12 +1,21 @@
 {
   "metadata": {
-    "version": "1.0",
-    "save_date": "2025-11-04T18:47:08.055848",
-    "game_days": 11
+    "version": "1.1",
+    "save_date": "2025-11-04T20:55:37.991748",
+    "game_days": 79,
+    "play_time": 1791.0083003044128
   },
   "player": {
-    "money": 3000.0,
-    "day": 11
+    "money": 20519,
+    "day": 79
+  },
+  "statistics": {
+    "total_earned": 44185,
+    "total_spent": 33666,
+    "floors_purchased": 2,
+    "managers_hired": 1,
+    "upgrades_bought": 0,
+    "start_time": 1762266346.983461
   },
   "building": {
     "floors": [
@@ -14,25 +23,25 @@
         "floor_number": 1,
         "owned": true,
         "floor_type": "office",
-        "manager": null,
-        "repair_level": "basic",
+        "manager": "trainee",
+        "repair_level": "luxury",
         "income_collected": 0
       },
       {
         "floor_number": 2,
-        "owned": false,
+        "owned": true,
         "floor_type": "office",
         "manager": null,
         "repair_level": "basic",
-        "income_collected": 0
+        "income_collected": 1100
       },
       {
         "floor_number": 3,
-        "owned": false,
+        "owned": true,
         "floor_type": "office",
         "manager": null,
         "repair_level": "basic",
-        "income_collected": 0
+        "income_collected": 825
       },
       {
         "floor_number": 4,
@@ -815,6 +824,6 @@
   "upgrades": {
     "elevator_system_level": 0,
     "facade_renovation_level": 0,
-    "infrastructure_level": 1
+    "infrastructure_level": 0
   }
 }

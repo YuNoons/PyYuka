@@ -158,10 +158,10 @@ class UpgradesPanel:
                                   self.rect.width - 20, card_height)
             
             if card_rect.collidepoint(x, y):
+                # Проверяем клик по кнопке улучшения
                 button_rect = pygame.Rect(card_rect.right - 130, card_rect.y + 15, 115, 50)
                 if button_rect.collidepoint(x, y):
-                    if self.game.buy_global_upgrade(upgrade_type):
-                        return True
+                    return self.game.buy_global_upgrade(upgrade_type)
             
             y_offset += card_height + 10
         

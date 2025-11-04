@@ -1,21 +1,21 @@
 {
   "metadata": {
     "version": "1.1",
-    "save_date": "2025-11-04T20:04:22.872136",
-    "game_days": 44,
-    "play_time": 2516.8364465236664
+    "save_date": "2025-11-04T21:02:21.024192",
+    "game_days": 102,
+    "play_time": 2194.0407543182373
   },
   "player": {
-    "money": 2310.0,
-    "day": 44
+    "money": 4132,
+    "day": 102
   },
   "statistics": {
-    "total_earned": 2730.0,
-    "total_spent": 810,
-    "floors_purchased": 0,
-    "managers_hired": 0,
+    "total_earned": 77322,
+    "total_spent": 83190,
+    "floors_purchased": 3,
+    "managers_hired": 3,
     "upgrades_bought": 0,
-    "start_time": 1762262546.035719
+    "start_time": 1762266346.983461
   },
   "building": {
     "floors": [
@@ -23,33 +23,33 @@
         "floor_number": 1,
         "owned": true,
         "floor_type": "office",
-        "manager": null,
-        "repair_level": "quality",
-        "income_collected": 7800.0
-      },
-      {
-        "floor_number": 2,
-        "owned": false,
-        "floor_type": "office",
-        "manager": null,
-        "repair_level": "basic",
+        "manager": "trainee",
+        "repair_level": "luxury",
         "income_collected": 0
       },
       {
-        "floor_number": 3,
-        "owned": false,
+        "floor_number": 2,
+        "owned": true,
         "floor_type": "office",
-        "manager": null,
-        "repair_level": "basic",
+        "manager": "trainee",
+        "repair_level": "luxury",
+        "income_collected": 748
+      },
+      {
+        "floor_number": 3,
+        "owned": true,
+        "floor_type": "office",
+        "manager": "trainee",
+        "repair_level": "luxury",
         "income_collected": 0
       },
       {
         "floor_number": 4,
-        "owned": false,
+        "owned": true,
         "floor_type": "office",
         "manager": null,
         "repair_level": "basic",
-        "income_collected": 0
+        "income_collected": 275
       },
       {
         "floor_number": 5,
@@ -824,6 +824,6 @@
   "upgrades": {
     "elevator_system_level": 0,
     "facade_renovation_level": 0,
-    "infrastructure_level": 1
+    "infrastructure_level": 0
   }
 }

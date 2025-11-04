@@ -68,7 +68,6 @@ class Game:
             self.day += 1
             self.last_day_time = current_time
             self.collect_income()
-            self.pay_operational_costs()
             
             # Случайные события
             self.random_events.trigger_random_event()
@@ -87,24 +86,6 @@ class Game:
             print("❌ Ошибка сохранения при выходе")
         return success
 
-    def calculate_global_income_multiplier(self):
-        """Рассчитывает глобальный множитель дохода"""
-        multiplier = 1.0
-        
-        # Бонус от лифтов
-        if self.elevator_system_level > 0:
-            elevator_config = self.config.UPGRADE_CONFIG["global_upgrades"]["elevator_system"]
-            if self.elevator_system_level <= len(elevator_config["levels"]):
-                multiplier += elevator_config["levels"][self.elevator_system_level - 1]["income_bonus"]
-        
-        # Бонус от фасада
-        if self.facade_renovation_level > 0:
-            facade_config = self.config.UPGRADE_CONFIG["global_upgrades"]["facade_renovation"]
-            if self.facade_renovation_level <= len(facade_config["levels"]):
-                multiplier += facade_config["levels"][self.facade_renovation_level - 1]["attraction_bonus"]
-        
-        return multiplier
-
     def calculate_operational_costs(self):
         """Расчет операционных расходов"""
         total_costs = 0
@@ -114,31 +95,13 @@ class Game:
                 total_costs += cost
         return int(total_costs)
 
-    def pay_operational_costs(self):
-        """Выплата операционных расходов"""
-        costs = self.calculate_operational_costs()
-        if costs > 0:
-            self.money -= costs
-            self.stats.add_expense(costs)
-            print(f"💸 Операционные расходы: {costs} руб.")
-            
-            # Предупреждение о низком балансе
-            if self.money < costs * 3:  # Если денег меньше чем на 3 дня
-                if hasattr(self, 'window'):
-                    self.window.show_message(
-                        f"⚠️ Низкий баланс! Расходы: {costs} руб./день", 
-                        self.window.colors['warning']
-                    )
-    
     def buy_global_upgrade(self, upgrade_type):
         """Покупка глобального улучшения"""
         if not hasattr(self.config, 'UPGRADE_CONFIG') or not self.config.UPGRADE_CONFIG:
-            print(f"❌ Конфиг улучшений не загружен для {upgrade_type}")
             return False
             
         upgrade_config = self.config.UPGRADE_CONFIG["global_upgrades"].get(upgrade_type)
         if not upgrade_config:
-            print(f"❌ Конфиг для улучшения {upgrade_type} не найден")
             return False
         
         current_level = getattr(self, f"{upgrade_type}_level", 0)
@@ -153,10 +116,22 @@ class Game:
             self.stats.add_expense(next_level_cost)
             self.stats.upgrades_bought += 1
             setattr(self, f"{upgrade_type}_level", current_level + 1)
-            print(f"🔼 Улучшение {upgrade_type} повышено до уровня {current_level + 1}")
+            
+            # Показываем сообщение об успехе
+            if hasattr(self, 'window'):
+                self.window.show_message(
+                    f"🚀 Улучшение '{upgrade_config.get('name', upgrade_type)}' повышено до уровня {current_level + 1}!",
+                    self.window.colors['success']
+                )
             return True
-        
-        return False
+        else:
+            # Показываем сообщение об ошибке
+            if hasattr(self, 'window'):
+                self.window.show_message(
+                    f"❌ Недостаточно денег для улучшения! Нужно: {next_level_cost} руб.",
+                    self.window.colors['error']
+                )
+            return False
     
     def get_global_upgrade_info(self, upgrade_type):
         """Возвращает информацию о глобальном улучшении"""
@@ -180,7 +155,12 @@ class Game:
             current_effect = upgrade_config["levels"][current_level - 1]
             for key, value in current_effect.items():
                 if key != "cost":
-                    info["effects"].append(f"{key}: {value}")
+                    if key == "income_bonus":
+                        info["effects"].append(f"Доход: +{value*100}%")
+                    elif key == "attraction_bonus":
+                        info["effects"].append(f"Привлекательность: +{value*100}%")
+                    elif key == "maintenance_reduction":
+                        info["effects"].append(f"Снижение расходов: {value*100}%")
         
         if current_level < info["max_level"]:
             next_level = upgrade_config["levels"][current_level]
@@ -188,12 +168,17 @@ class Game:
             info["next_effects"] = []
             for key, value in next_level.items():
                 if key != "cost":
-                    info["next_effects"].append(f"{key}: {value}")
+                    if key == "income_bonus":
+                        info["next_effects"].append(f"Доход: +{value*100}%")
+                    elif key == "attraction_bonus":
+                        info["next_effects"].append(f"Привлекательность: +{value*100}%")
+                    elif key == "maintenance_reduction":
+                        info["next_effects"].append(f"Снижение расходов: {value*100}%")
         
         return info
 
     def collect_income(self):
-        """Сбор дохода со всех этажей"""
+        """Сбор дохода со всех этажей (доход уже за вычетом расходов)"""
         for floor in self.building.floors:
             if floor.owned:
                 income = floor.calculate_income(self.config)
@@ -206,20 +191,24 @@ class Game:
 
     def collect_floor_income(self, floor_number):
         """Ручной сбор дохода с конкретного этажа"""
+        if floor_number < 1 or floor_number > len(self.building.floors):
+            return False
+            
         floor = self.building.floors[floor_number - 1]
         if floor.owned and floor.income_collected > 0:
             collected_amount = floor.income_collected
             self.money += collected_amount
             self.stats.add_income(collected_amount)
             floor.income_collected = 0
-            print(f"💰 DEBUG: Собрано {collected_amount} руб. с этажа {floor_number}")
+            
+            # Показываем сообщение о собранной сумме
+            if hasattr(self, 'window'):
+                self.window.show_message(f"💰 Собрано {collected_amount} руб.!", self.window.colors['success'])
             return True
         return False
 
     def buy_floor(self, floor_number, floor_type="office"):
         """Покупка этажа"""
-        print(f"🔍 DEBUG: Пытаемся купить этаж {floor_number}")
-
         if 1 <= floor_number <= len(self.building.floors):
             floor = self.building.floors[floor_number - 1]
 
@@ -234,12 +223,21 @@ class Game:
                     self.stats.floors_purchased += 1
                     floor.owned = True
                     floor.floor_type = floor_type
-                    print(f"🔍 DEBUG: Этаж {floor_number} успешно куплен!")
                     return True
+                else:
+                    # Показываем сообщение об ошибке
+                    if hasattr(self, 'window'):
+                        self.window.show_message(
+                            f"❌ Недостаточно денег! Нужно: {cost} руб.",
+                            self.window.colors['error']
+                        )
         return False
 
     def hire_manager(self, floor_number, manager_type):
         """Найм менеджера на этаж"""
+        if floor_number < 1 or floor_number > len(self.building.floors):
+            return False
+            
         floor = self.building.floors[floor_number - 1]
         if floor.owned:
             manager_config = self.config.MANAGER_CONFIG["managers"][manager_type]
@@ -248,14 +246,14 @@ class Game:
                 self.stats.add_expense(manager_config["cost"])
                 self.stats.managers_hired += 1
                 floor.manager = manager_type
-                print(f"👨‍💼 DEBUG: Нанят {manager_config['name']} на этаж {floor_number}")
                 return True
         return False
 
     def repair_floor(self, floor_number, repair_level):
         """Ремонт этажа"""
-        print(f"🔧 DEBUG: Попытка ремонта этажа {floor_number} до уровня {repair_level}")
-        
+        if floor_number < 1 or floor_number > len(self.building.floors):
+            return False
+            
         floor = self.building.floors[floor_number - 1]
         if floor.owned:
             cost = floor.calculate_repair_cost(self.config, repair_level)
@@ -264,12 +262,11 @@ class Game:
                 self.money -= cost
                 self.stats.add_expense(cost)
                 floor.repair_level = repair_level
-                print(f"🔧 DEBUG: Ремонт этажа {floor_number} успешно выполнен!")
                 return True
         return False
     
     def get_total_income_per_day(self):
-        """Общий доход в день"""
+        """Общий доход в день (уже за вычетом расходов)"""
         total = 0
         for floor in self.building.floors:
             if floor.owned:
@@ -278,6 +275,9 @@ class Game:
     
     def get_available_managers(self, floor_number):
         """Получить доступных менеджеров для этажа"""
+        if floor_number < 1 or floor_number > len(self.building.floors):
+            return []
+            
         available = []
         floor = self.building.floors[floor_number - 1]
         
@@ -301,29 +301,18 @@ class RandomEvents:
                 "name": "Кризис", 
                 "effect": lambda: self.modify_income(-0.15),
                 "message": "📉 Экономический кризис! Доход уменьшен на 15% на сегодня!"
-            },
-            {
-                "name": "Технический осмотр",
-                "effect": lambda: self.trigger_inspection(),
-                "message": "🔧 Технический осмотр! Все этажи требуют внимания."
             }
         ]
         self.active_events = []
     
     def modify_income(self, multiplier):
         """Временное изменение дохода"""
-        # Можно реализовать временные модификаторы
-        pass
-    
-    def trigger_inspection(self):
-        """Событие технического осмотра"""
-        # Можно добавить специальные условия
         pass
     
     def trigger_random_event(self):
         """Активировать случайное событие"""
         if len(self.game.building.get_owned_floors()) < 3:
-            return  # Не активировать события в начале игры
+            return
             
         if pygame.time.get_ticks() % 100 < 2:  # 2% шанс каждый день
             event = pygame.time.get_ticks() % len(self.events)
