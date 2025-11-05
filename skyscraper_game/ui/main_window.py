@@ -3,7 +3,7 @@ import time
 import math
 from config.game_config import GameConfig
 from .upgrades_panel import UpgradesPanel
-
+from .ui_components import Button, UIManager
 
 class VisualEffects:
     """Класс для визуальных эффектов и анимаций"""
@@ -144,6 +144,9 @@ class GameWindow:
         self.screen = pygame.display.set_mode((self.config.SCREEN_WIDTH, self.config.SCREEN_HEIGHT))
         pygame.display.set_caption("🏢 Небоскрёб Мечты")
         
+        # Менеджер UI для централизованной обработки событий
+        self.ui_manager = UIManager()
+
         # Шрифты
         try:
             self.title_font = pygame.font.Font('assets/fonts/title.ttf', 36)
@@ -162,7 +165,6 @@ class GameWindow:
         # Анимации
         self.pulse_value = 0
         self.pulse_direction = 1
-        self.hover_buttons = set()
 
         # Настройки скролла
         self.scroll_offset = 0
@@ -219,6 +221,26 @@ class GameWindow:
             upgrades_panel_height
         )
 
+        # Инициализация UI компонентов
+        self.setup_ui_components()
+
+    def setup_ui_components(self):
+        """Инициализация UI компонентов"""
+        # Кнопка сохранения
+        save_button = Button(
+            pygame.Rect(self.config.SCREEN_WIDTH - 130, 25, 110, 40),
+            "💾 Сохранить",
+            self.save_game_action,
+            self.small_font,
+            {
+                'normal': self.colors['button'],
+                'hover': self.colors['button_hover'], 
+                'pressed': self.colors['accent'],
+                'text': (255, 255, 255)
+            }
+        )
+        self.ui_manager.add_component(save_button)
+
     def create_background_pattern(self):
         """Создает фоновый узор"""
         pattern = pygame.Surface((100, 100), pygame.SRCALPHA)
@@ -264,162 +286,149 @@ class GameWindow:
         return self.text_cache[key]
     
     def handle_events(self):
-        """Обработка событий"""
+        """Обработка событий через UI менеджер"""
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.game.save_on_exit()
                 return False
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                current_time = pygame.time.get_ticks()
-                if current_time - self.last_click_time > 300:  # Защита от двойных кликов
-                    self.last_click_time = current_time
-                    self.handle_click(event.pos)
-            elif event.type == pygame.MOUSEWHEEL:
-                self.scroll_offset -= event.y * self.scroll_sensitivity
-                max_scroll = max(0, len(self.game.building.floors) - self.max_visible_floors) * self.floor_height
-                self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
+                
+            # Обрабатываем события через UI менеджер
+            if self.ui_manager.handle_event(event):
+                continue  # Событие обработано UI
+                
+            # Обработка специальных событий (скролл, выбор этажа)
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button in [4, 5]:  # Скролл колесом
+                    self.handle_scroll(event.button)
+                else:
+                    self.handle_special_click(event.pos)
+                    
         return True
     
-    def handle_click(self, pos):
-        """Обработка кликов мыши с учетом скролла"""
+    def handle_special_click(self, pos):
+        """Обработка кликов не связанных с UI компонентами"""
         x, y = pos
         
-        # Сначала проверяем клик по панели улучшений
-        if self.upgrades_panel.handle_click(pos):
-            return True
-            
-        # Проверяем клик по полосе прокрутки
-        if self.is_scrollbar_click(x, y):
-            return True
-        
-        # Проверяем клик по кнопке сохранения в верхней панели
-        save_button = pygame.Rect(self.config.SCREEN_WIDTH - 130, 25, 110, 40)
-        if save_button.collidepoint(x, y):
-            success = self.game.save_system.save_game(self.game, "manual_save.json")
-            if success:
-                self.show_message("💾 Игра сохранена!", self.colors['success'])
-            else:
-                self.show_message("❌ Ошибка сохранения!", self.colors['error'])
-            return True
-            
-        # Клик по этажу в здании
+        # Клик по этажам в здании
         if x < self.building_width:
-            start_y = 150
-            floor_height = 30
-            
-            if y >= start_y:
-                start_index = self.scroll_offset // self.floor_height
-                relative_y = y - start_y
-                floor_index = start_index + (relative_y // floor_height)
-                
-                if 0 <= floor_index < len(self.game.building.floors):
-                    self.game.selected_floor = floor_index + 1
-                    return True
+            self.handle_building_click(x, y)
+        # Клик по информационной панели
+        elif x > self.building_width and x < self.building_width + self.info_panel_width:
+            self.handle_info_panel_click(x, y)
+        # Клик по панели улучшений
+        elif self.upgrades_panel.rect.collidepoint(pos):
+            self.upgrades_panel.handle_click(pos)
+    
+    def handle_building_click(self, x, y):
+        """Обработка кликов по зданию"""
+        start_y = 150
+        floor_height = 30
         
-        # Клик по кнопкам в информационной панели
-        elif x > self.building_width and self.game.selected_floor:
-            return self.handle_info_panel_click(x, y)
+        if y >= start_y:
+            start_index = self.scroll_offset // self.floor_height
+            relative_y = y - start_y
+            floor_index = start_index + (relative_y // floor_height)
             
-        return True
+            if 0 <= floor_index < len(self.game.building.floors):
+                self.game.selected_floor = floor_index + 1
+                
+    def handle_scroll(self, button):
+        """Обработка скролла"""
+        if button == 4:  # Скролл вверх
+            self.scroll_offset = max(0, self.scroll_offset - self.scroll_sensitivity)
+        elif button == 5:  # Скролл вниз
+            max_scroll = max(0, len(self.game.building.floors) - self.max_visible_floors) * self.floor_height
+            self.scroll_offset = min(self.scroll_offset + self.scroll_sensitivity, max_scroll)
 
     def handle_info_panel_click(self, x, y):
         """Обработка кликов в информационной панели"""
-        if not self.game.selected_floor or self.game.selected_floor > len(self.game.building.floors):
-            return False
+        if not self.game.selected_floor:
+            return
             
         floor = self.game.building.floors[self.game.selected_floor - 1]
         panel_x = self.building_width + 30
-        
-        # Определяем позиции кнопок на основе текущего отображения
         current_y = 180
+        
+        # Создаем временные кнопки для обработки кликов
+        buttons = []
 
         if not floor.owned:
             # Кнопка покупки этажа
-            buy_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 50)
-            
-            if buy_button.collidepoint(x, y):
-                cost = self.game.building.get_floor_cost(self.game.selected_floor)
-                if self.game.buy_floor(self.game.selected_floor):
-                    self.show_message(f"Этаж {self.game.selected_floor} куплен!", self.colors['success'])
-                else:
-                    self.show_message(f"Недостаточно денег! Нужно: {cost} руб.", self.colors['error'])
-                return True
-            return False
-
-        # Для купленного этажа - кнопки действий
-        current_y = 180
-
-        # Кнопка сбора дохода
-        if floor.income_collected > 0 and (not floor.manager or not self.config.MANAGER_CONFIG["managers"][floor.manager].get("auto_collect", False)):
-            collect_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
-            
-            if collect_button.collidepoint(x, y):
-                self.game.collect_floor_income(self.game.selected_floor)
-                return True
-            current_y += 50
-
-        # Кнопка улучшения ремонта
-        repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
-        if floor.repair_level in repair_levels:
-            current_repair_index = repair_levels.index(floor.repair_level)
-            
-            if current_repair_index < len(repair_levels) - 1:
-                next_repair = repair_levels[current_repair_index + 1]
-                repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
-                
-                repair_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
-
-                if repair_button.collidepoint(x, y):
-                    if self.game.repair_floor(self.game.selected_floor, next_repair):
-                        self.show_message(f"Ремонт улучшен до {next_repair}!", self.colors['success'])
-                    else:
-                        self.show_message(f"Недостаточно денег для ремонта! Нужно: {repair_cost} руб.", self.colors['error'])
-                    return True
+            buy_button_rect = pygame.Rect(panel_x, current_y + 90, self.info_panel_width - 90, 70)
+            buttons.append(("buy", buy_button_rect))
+        else:
+            # Кнопка сбора дохода
+            if floor.income_collected > 0 and not self.has_auto_collect(floor):
+                collect_button_rect = pygame.Rect(panel_x, current_y + 250, self.info_panel_width - 90, 40)
+                buttons.append(("collect", collect_button_rect))
                 current_y += 50
-
-        # Кнопки найма менеджеров
-        available_managers = self.game.get_available_managers(self.game.selected_floor)
-        for manager_id, manager_data in available_managers:
-            if manager_id != floor.manager:
-                manager_button = pygame.Rect(panel_x, current_y, self.info_panel_width - 90, 40)
-                
-                if manager_button.collidepoint(x, y):
-                    if self.game.hire_manager(self.game.selected_floor, manager_id):
-                        self.show_message(f"Нанят {manager_data['name']}!", self.colors['success'])
-                    else:
-                        self.show_message(f"Недостаточно денег! Нужно: {manager_data['cost']} руб.", self.colors['error'])
-                    return True
-                current_y += 50
+            
+            # Кнопки улучшения ремонта
+            repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
+            if floor.repair_level in repair_levels:
+                current_repair_index = repair_levels.index(floor.repair_level)
+                if current_repair_index < len(repair_levels) - 1:
+                    repair_button_rect = pygame.Rect(panel_x, current_y + 250, self.info_panel_width - 90, 40)
+                    buttons.append(("repair", repair_button_rect))
+                    current_y += 50
+            
+            # Кнопки менеджеров
+            available_managers = self.game.get_available_managers(self.game.selected_floor)
+            for manager_id, manager_data in available_managers:
+                if manager_id != floor.manager:
+                    manager_button_rect = pygame.Rect(panel_x, current_y + 250, self.info_panel_width - 90, 40)
+                    buttons.append((f"manager_{manager_id}", manager_button_rect))
+                    current_y += 50
+        
+        # Проверяем клик по кнопкам
+        for button_type, button_rect in buttons:
+            if button_rect.collidepoint((x, y)):
+                self.handle_info_panel_action(button_type, floor)
+                return True
         
         return False
 
-    def is_scrollbar_click(self, x, y):
-        """Проверяем, был ли клик по полосе прокрутки"""
-        if len(self.game.building.floors) <= self.max_visible_floors:
-            return False
-
-        scrollbar_width = 10
-        scrollbar_x = self.building_width - scrollbar_width - 5
-
-        # Исправлено: область скроллбара соответствует видимой области этажей
-        scroll_area_start = 150
-        scroll_area_end = self.config.SCREEN_HEIGHT - 10
-        scroll_area_height = scroll_area_end - scroll_area_start
-
-        if (scrollbar_x <= x <= scrollbar_x + scrollbar_width and 
-            scroll_area_start <= y <= scroll_area_end):
+    def handle_info_panel_action(self, action_type, floor):
+        """Обработка действий информационной панели"""
+        if action_type == "buy":
+            cost = self.game.building.get_floor_cost(self.game.selected_floor)
+            if self.game.buy_floor(self.game.selected_floor):
+                self.show_message(f"Этаж {self.game.selected_floor} куплен!", self.colors['success'])
+            else:
+                self.show_message(f"Недостаточно денег! Нужно: {cost} руб.", self.colors['error'])
+                
+        elif action_type == "collect":
+            self.game.collect_floor_income(self.game.selected_floor)
             
-            total_height = len(self.game.building.floors) * self.floor_height
-            max_scroll = max(0, total_height - scroll_area_height)
-            click_ratio = (y - scroll_area_start) / scroll_area_height
-            self.scroll_offset = int(click_ratio * max_scroll)
+        elif action_type == "repair":
+            repair_levels = list(self.config.FLOOR_CONFIG["repair_levels"].keys())
+            current_repair_index = repair_levels.index(floor.repair_level)
+            next_repair = repair_levels[current_repair_index + 1]
+            repair_cost = floor.calculate_repair_cost(self.game.config, next_repair)
+            
+            if self.game.repair_floor(self.game.selected_floor, next_repair):
+                self.show_message(f"Ремонт улучшен до {next_repair}!", self.colors['success'])
+            else:
+                self.show_message(f"Недостаточно денег для ремонта! Нужно: {repair_cost} руб.", self.colors['error'])
+                
+        elif action_type.startswith("manager_"):
+            manager_id = action_type.split("_")[1]
+            manager_data = self.config.MANAGER_CONFIG["managers"][manager_id]
+            
+            if self.game.hire_manager(self.game.selected_floor, manager_id):
+                self.show_message(f"Нанят {manager_data['name']}!", self.colors['success'])
+            else:
+                self.show_message(f"Недостаточно денег! Нужно: {manager_data['cost']} руб.", self.colors['error'])
 
-            return True
-        return False
+    def has_auto_collect(self, floor):
+        """Проверяет, есть ли у этажа авто-сбор"""
+        return (floor.manager and 
+                self.config.MANAGER_CONFIG["managers"][floor.manager].get("auto_collect", False))
 
     def update(self):
         """Обновление анимаций и эффектов"""
         self.game.update()
+        self.ui_manager.update()
         
         # Пульсация для анимаций
         self.pulse_value += 0.1 * self.pulse_direction
@@ -443,7 +452,7 @@ class GameWindow:
         self.clock.tick(60)
 
     def render(self):
-        """Отрисовка всего интерфейса с премиум графикой"""
+        """Отрисовка всего интерфейса"""
         # Фон с узором
         for x in range(0, self.config.SCREEN_WIDTH, 100):
             for y in range(0, self.config.SCREEN_HEIGHT, 100):
@@ -461,6 +470,7 @@ class GameWindow:
         self.render_info_panel()
         self.upgrades_panel.render(self.screen)
         self.render_top_panel()
+        self.ui_manager.draw(self.screen)
         
         # Сообщения поверх всего
         if self.current_message:
@@ -800,17 +810,6 @@ class GameWindow:
         for text, x_pos in indicators:
             text_surf = self.small_font.render(text, True, (255, 255, 255))
             self.screen.blit(text_surf, (x_pos, 40))
-        
-        # Кнопка сохранения
-        save_rect = pygame.Rect(self.config.SCREEN_WIDTH - 130, 25, 110, 40)
-        mouse_pos = pygame.mouse.get_pos()
-        hover = save_rect.collidepoint(mouse_pos)
-        
-        self.visual_effects.draw_modern_button(
-            self.screen, save_rect,
-            "💾 Сохранить",
-            self.small_font, self.colors, hover
-        )
 
     def render_message(self):
         """Отрисовка текущего сообщения"""
@@ -831,7 +830,7 @@ class GameWindow:
             alpha // 2
         )
         
-        # Текст сообщения (ИСПРАВЛЕНО: добавлен blit)
+        # Текст сообщения
         message_surf = self.font.render(
             self.current_message['text'], 
             True, 
@@ -840,4 +839,12 @@ class GameWindow:
         message_surf.set_alpha(alpha)
         
         message_rect = message_surf.get_rect(center=(self.config.SCREEN_WIDTH // 2, 110 + y_offset))
-        self.screen.blit(message_surf, message_rect)  # ИСПРАВЛЕНО: добавлена эта строка
+        self.screen.blit(message_surf, message_rect)
+
+    def save_game_action(self):
+        """Действие кнопки сохранения"""
+        success = self.game.save_system.save_game(self.game, "manual_save.json")
+        if success:
+            self.show_message("💾 Игра сохранена!", self.colors['success'])
+        else:
+            self.show_message("❌ Ошибка сохранения!", self.colors['error'])
